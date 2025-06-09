@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>文化祭 注文管理</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    h1, h2 { color: #333; }
+    .item, .order { margin-bottom: 10px; }
+    select, input { margin-left: 5px; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>文化祭 注文アプリ</h1>
+
+    <h2>商品一覧</h2>
+    <div v-for="item in items" :key="item.id" class="item">
+      {{ item.name }} - {{ item.price }}円
+      <input type="number" v-model.number="quantities[item.id]" min="1" />
+      <button @click="order(item.id)">注文</button>
+    </div>
+
+    <h2>注文履歴</h2>
+    <div v-for="order in orders" :key="order.id" class="order">
+      <strong>{{ order.item_name }}</strong> × {{ order.quantity }}
+      <br>
+      時刻: {{ order.timestamp }}
+      <br>
+      ステータス: 
+      <select v-model="order.status" @change="updateStatus(order.id, order.status)">
+        <option>受付中</option>
+        <option>調理中</option>
+        <option>完了</option>
+        <option>キャンセル</option>
+      </select>
+    </div>
+  </div>
+
+  <script>
+    new Vue({
+      el: '#app',
+      data: {
+        items: [],
+        orders: [],
+        quantities: {}
+      },
+      mounted() {
+        this.fetchItems();
+        this.fetchOrders();
+      },
+      methods: {
+        fetchItems() {
+          fetch('http://localhost:3000/items')
+            .then(res => res.json())
+            .then(data => {
+              this.items = data;
+              data.forEach(item => this.$set(this.quantities, item.id, 1));
+            });
+        },
+        fetchOrders() {
+          fetch('http://localhost:3000/orders')
+            .then(res => res.json())
+            .then(data => this.orders = data);
+        },
+        order(itemId) {
+          fetch('http://localhost:3000/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              item_id: itemId,
+              quantity: this.quantities[itemId]
+            })
+          })
+          .then(res => res.json())
+          .then(() => {
+            alert('注文しました！');
+            this.fetchOrders();
+          });
+        },
+        updateStatus(orderId, newStatus) {
+          fetch(`http://localhost:3000/orders/${orderId}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus })
+          })
+          .then(res => res.json())
+          .then(() => {
+            console.log('ステータス更新:', newStatus);
+          });
+        }
+      }
+    });
+  </script>
+</body>
+</html>
